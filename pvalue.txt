@@ -1,0 +1,29 @@
+library(dplyr
+
+## tomamos la diferencia entre la muestra que recibe el tratamiento real y la muestra de control:
+
+dat <- read.csv("femaleMiceWeights.csv")
+control <- filter(dat,Diet=="chow") %>% select(Bodyweight) %>% unlist
+treatment <- filter(dat,Diet=="hf") %>% select(Bodyweight) %>% unlist
+obsdiff <- mean(treatment) - mean(control)
+
+## para saber si esa observed difference realmente se debe al tratamiento, comparamos contra la null hypothesis
+## tomamos 10000 veces una muestra con el tratamiento y una muestra sin el tratamiento
+## armamos una distribución con las diferencias de las medias entre una muestra y la otra
+## si el tratamiento es un placebo, entonces esa distribución es la "null distribution"
+
+population <- unlist(read.csv("femaleControlsPopulation.csv"))
+
+n <- 10000
+null <- vector("numeric",n)
+for (i in 1:n) {
+  control <- sample(population,12)
+  treatment <- sample(population,12)
+  null[i] <- mean(treatment) - mean(control)
+}
+
+## porcentaje de veces que la null distribution es mayor que la diferencia observada en el tratamiento:
+
+mean(null >= obsdiff)
+
+## eso da 0.0138, y es el p-valor: la probabilidad de que un evento de la null distribution sea mayor que la diferencia observada cuando la null hypothesis vale.

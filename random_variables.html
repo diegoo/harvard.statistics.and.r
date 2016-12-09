@@ -1,0 +1,490 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Introduction to Random Variables</title>
+    
+    <meta name="author" content="Rafael Irizarry and Michael Love">
+
+    <!-- Enable responsive viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Le HTML5 shim, for IE6-8 support of HTML elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <!-- Le styles -->
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/bootstrap/css/bootstrap.2.2.2.min.css" rel="stylesheet">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/style.css?body=1" rel="stylesheet" type="text/css" media="all">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/kbroman.css" rel="stylesheet" type="text/css" media="all">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/knitr.css" rel="stylesheet" type="text/css" media="all">
+
+    <!-- Le fav and touch icons -->
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/ico/favicon.ico" rel="icon" type="image/png">
+
+    <!-- atom & rss feed -->
+    <link href="http://genomicsclass.github.io/booknil" type="application/atom+xml" rel="alternate" title="Sitewide ATOM Feed">
+    <link href="http://genomicsclass.github.io/booknil" type="application/rss+xml" rel="alternate" title="Sitewide RSS Feed">
+
+    <!-- knitr javascript -->
+    <script src="http://genomicsclass.github.io/book/assets/themes/twitter/knitr.js" type="text/javascript"></script>
+
+    <!-- mathjax javascript -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+      });
+    </script>
+
+    <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
+
+
+  </head>
+
+  <body>
+    <div class="navbar">
+      <div class="navbar-inner">
+        <div class="container-narrow">
+          <a class="brand" href="http://genomicsclass.github.io/book">PH525x series - Biomedical Data Science</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-narrow">
+
+      <div class="content">
+        
+
+<div class="page-header">
+  <h2>Introduction to Random Variables </h2>
+</div>
+
+<div class="row-fluid">
+  <div class="span12">
+    <h1 id="inference">Inference</h1>
+
+<p><a name="introduction"></a></p>
+
+<h2 id="introduction">Introduction</h2>
+
+<p>This chapter introduces the statistical concepts necessary to understand p-values and confidence intervals. These terms are ubiquitous in the life science literature. Let’s use <a href="http://diabetes.diabetesjournals.org/content/53/suppl_3/S215.full]">this paper</a> as an example.</p>
+
+<p>Note that the abstract has this statement:</p>
+
+<blockquote>
+  <p>“Body weight was higher in mice fed the high-fat diet already after the first week, due to higher dietary intake in combination with lower metabolic efficiency.”</p>
+</blockquote>
+
+<p>To support this claim they provide the following in the results section:</p>
+
+<blockquote>
+  <p>“Already during the first week after introduction of high-fat diet, body weight increased significantly more in the high-fat diet-fed mice (<script type="math/tex">+</script> 1.6 <script type="math/tex">\pm</script> 0.1 g) than in the normal diet-fed mice (<script type="math/tex">+</script> 0.2 <script type="math/tex">\pm</script> 0.1 g; P &lt; 0.001).”</p>
+</blockquote>
+
+<p>What does P &lt; 0.001 mean? What are the <script type="math/tex">\pm</script> included?
+We will learn what this means and learn to compute these values in
+R. The first step is to understand random variables. To do
+this, we will use data from a mouse database (provided by Karen
+Svenson via Gary Churchill and Dan Gatti and partially funded by P50
+GM070683). We will import the data into R and explain random variables
+and null distributions using R programming.</p>
+
+<p>If you already downloaded the <code class="highlighter-rouge">femaleMiceWeights</code> file into your working directory, you can read it into R with just one line:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">dat</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">read.csv</span><span class="p">(</span><span class="s2">"femaleMiceWeights.csv"</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<h4 id="our-first-look-at-data">Our first look at data</h4>
+
+<p>We are interested in determining if following a given diet makes mice
+heavier after several weeks. This data was produced by ordering 24
+mice from The Jackson Lab and randomly assigning either chow or high
+fat (hf) diet. After several weeks, the scientists weighed each mice
+and obtained this data (<code class="highlighter-rouge">head</code> just shows us the first 6 rows):</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">head</span><span class="p">(</span><span class="n">dat</span><span class="p">)</span><span class="w"> 
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>##   Diet Bodyweight
+## 1 chow      21.51
+## 2 chow      28.14
+## 3 chow      24.04
+## 4 chow      23.45
+## 5 chow      23.68
+## 6 chow      19.79
+</code></pre>
+</div>
+
+<p>In RStudio, you can view the entire dataset with:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">View</span><span class="p">(</span><span class="n">dat</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>So are the hf mice heavier? Mouse 24 at 20.73 grams is one the
+lightest mice, while Mouse 21 at 34.02 grams is one of the heaviest. Both are on
+the hf diet. Just from looking at the data, we see there is
+<em>variability</em>. Claims such as the one above usually refer to the
+averages. So let’s look at the average of each group:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span><span class="w">
+</span><span class="n">control</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span><span class="n">Diet</span><span class="o">==</span><span class="s2">"chow"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">select</span><span class="p">(</span><span class="n">Bodyweight</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">unlist</span><span class="w">
+</span><span class="n">treatment</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span><span class="n">Diet</span><span class="o">==</span><span class="s2">"hf"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">select</span><span class="p">(</span><span class="n">Bodyweight</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">unlist</span><span class="w">
+</span><span class="n">print</span><span class="p">(</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">treatment</span><span class="p">)</span><span class="w"> </span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 26.83417
+</code></pre>
+</div>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">print</span><span class="p">(</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">control</span><span class="p">)</span><span class="w"> </span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 23.81333
+</code></pre>
+</div>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">obsdiff</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">treatment</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">control</span><span class="p">)</span><span class="w">
+</span><span class="n">print</span><span class="p">(</span><span class="n">obsdiff</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 3.020833
+</code></pre>
+</div>
+
+<p>So the hf diet mice are about 10% heavier. Are we done? Why do we need p-values and confidence intervals? The reason is that these averages are random variables. They can take many values.</p>
+
+<p>If we repeat the experiment, we obtain 24 new mice from The Jackson Laboratory and, after randomly assigning them to each diet, we get a different mean. Every time we repeat this experiment, we get a different value. We call this type of quantity a <em>random variable</em>.</p>
+
+<p><a name="random_variable"></a></p>
+
+<h2 id="random-variables">Random Variables</h2>
+
+<p>Let’s explore random variables further. Imagine that we actually have the weight of all control female mice and can upload them to R. In Statistics, we refer to this as <em>the population</em>. These are all the control mice available from which we sampled 24. Note that in practice we do not have access to the population. We have a special data set that we are using here to illustrate concepts.</p>
+
+<p>Read in the data either from your home directory or from dagdata:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">downloader</span><span class="p">)</span><span class="w">
+</span><span class="n">url</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="s2">"https://raw.githubusercontent.com/genomicsclass/dagdata/master/inst/extdata/femaleControlsPopulation.csv"</span><span class="w">
+</span><span class="n">filename</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="s2">"femaleControlsPopulation.csv"</span><span class="w">
+</span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">file.exists</span><span class="p">(</span><span class="n">filename</span><span class="p">))</span><span class="w"> </span><span class="n">download</span><span class="p">(</span><span class="n">url</span><span class="p">,</span><span class="n">destfile</span><span class="o">=</span><span class="n">filename</span><span class="p">)</span><span class="w">
+</span><span class="n">population</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">read.csv</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="w">
+</span><span class="n">population</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">unlist</span><span class="p">(</span><span class="n">population</span><span class="p">)</span><span class="w"> </span><span class="c1"># turn it into a numeric
+</span></code></pre>
+</div>
+
+<p>Now let’s sample 12 mice three times and see how the average changes.</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">control</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">population</span><span class="p">,</span><span class="m">12</span><span class="p">)</span><span class="w">
+</span><span class="n">mean</span><span class="p">(</span><span class="n">control</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 24.11333
+</code></pre>
+</div>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">control</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">population</span><span class="p">,</span><span class="m">12</span><span class="p">)</span><span class="w">
+</span><span class="n">mean</span><span class="p">(</span><span class="n">control</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 24.40667
+</code></pre>
+</div>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">control</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">population</span><span class="p">,</span><span class="m">12</span><span class="p">)</span><span class="w">
+</span><span class="n">mean</span><span class="p">(</span><span class="n">control</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 23.84
+</code></pre>
+</div>
+
+<p>Note how the average varies. We can continue to do this repeatedly and start learning something about the distribution of this random variable.</p>
+
+<p><a name="null_distribution"></a></p>
+
+<h2 id="the-null-hypothesis">The Null Hypothesis</h2>
+
+<p>Now let’s go back to our average difference of <code class="highlighter-rouge">obsdiff</code>. As
+scientists we need to be skeptics. How do we know that this <code class="highlighter-rouge">obsdiff</code>
+is due to the diet? What happens if we give all 24 mice the same diet? Will
+we see a difference this big? Statisticians refer to this scenario as
+the <em>null hypothesis</em>. The name “null” is used to remind us that we
+are acting as skeptics: we give credence to the possibility that there
+is no difference.</p>
+
+<p>Because we have access to the population, we can actually observe as
+many values as we want of the difference of the averages when the diet
+has no effect. We can do this by randomly sampling 24 control mice,
+giving them the same diet, and then recording the difference in mean
+between two randomly split groups of 12 and 12. Here is this process
+written in R code:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="c1">##12 control mice
+</span><span class="n">control</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">population</span><span class="p">,</span><span class="m">12</span><span class="p">)</span><span class="w">
+</span><span class="c1">##another 12 control mice that we act as if they were not
+</span><span class="n">treatment</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">population</span><span class="p">,</span><span class="m">12</span><span class="p">)</span><span class="w">
+</span><span class="n">print</span><span class="p">(</span><span class="n">mean</span><span class="p">(</span><span class="n">treatment</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">control</span><span class="p">))</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 0.5575
+</code></pre>
+</div>
+
+<p>Now let’s do it 10,000 times. We will use a “for-loop”, an operation
+that lets us automate this (a simpler approach that, we will learn later, is to use <code class="highlighter-rouge">replicate</code>).</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">n</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">10000</span><span class="w">
+</span><span class="n">null</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">vector</span><span class="p">(</span><span class="s2">"numeric"</span><span class="p">,</span><span class="n">n</span><span class="p">)</span><span class="w">
+</span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="o">:</span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="n">control</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">population</span><span class="p">,</span><span class="m">12</span><span class="p">)</span><span class="w">
+  </span><span class="n">treatment</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">population</span><span class="p">,</span><span class="m">12</span><span class="p">)</span><span class="w">
+  </span><span class="n">null</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">treatment</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">control</span><span class="p">)</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>The values in <code class="highlighter-rouge">null</code> form what we call the <em>null distribution</em>. We will define this more formally below.</p>
+
+<p>So what percent of the 10,000 are bigger than <code class="highlighter-rouge">obsdiff</code>?</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">mean</span><span class="p">(</span><span class="n">null</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">obsdiff</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 0.0138
+</code></pre>
+</div>
+
+<p>Only a small percent of the 10,000 simulations. As skeptics what do
+we conclude? When there is no diet effect, we see a difference as big
+as the one we observed only 1.5% of the time. This is what is known as
+a p-value, which we will define more formally later in the book.</p>
+
+<p><a name="distributions"></a></p>
+
+<h2 id="distributions">Distributions</h2>
+
+<p>We have explained what we mean by <em>null</em> in the context of null hypothesis, but what exactly is a distribution?
+The simplest way to think of a <em>distribution</em> is as a compact description of many numbers. For example, suppose you have measured the heights of all men in a population. Imagine you need to describe these numbers to someone that has no idea what these heights are, such as an alien that has never visited Earth. Suppose all these heights are contained in the following dataset:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">UsingR</span><span class="p">)</span><span class="w">
+</span><span class="n">x</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">father.son</span><span class="o">$</span><span class="n">fheight</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>One approach to summarizing these numbers is to simply list them all out for the alien to see. Here are 10 randomly selected heights of 1,078:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="nf">round</span><span class="p">(</span><span class="n">sample</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="m">10</span><span class="p">),</span><span class="m">1</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>##  [1] 67.4 64.9 62.9 69.2 72.3 69.3 65.9 65.2 69.8 69.1
+</code></pre>
+</div>
+
+<h4 id="cumulative-distribution-function">Cumulative Distribution Function</h4>
+
+<p>Scanning through these numbers, we start to get a rough idea of what the entire list looks like, but it is certainly inefficient. We can quickly improve on this approach by defining and visualizing a <em>distribution</em>. To define a distribution we compute, for all possible values of <script type="math/tex">a</script>, the proportion of numbers in our list that are below <script type="math/tex">a</script>. We use the following notation:</p>
+
+<script type="math/tex; mode=display">F(a) \equiv \mbox{Pr}(x \leq a)</script>
+
+<p>This is called the cumulative distribution function (CDF). When the CDF is derived from data, as opposed to theoretically, we also call it the empirical CDF (ECDF). We can plot <script type="math/tex">F(a)</script> versus <script type="math/tex">a</script> like this:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">smallest</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">floor</span><span class="p">(</span><span class="w"> </span><span class="nf">min</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">)</span><span class="w">
+</span><span class="n">largest</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">ceiling</span><span class="p">(</span><span class="w"> </span><span class="nf">max</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">)</span><span class="w">
+</span><span class="n">values</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">seq</span><span class="p">(</span><span class="n">smallest</span><span class="p">,</span><span class="w"> </span><span class="n">largest</span><span class="p">,</span><span class="n">len</span><span class="o">=</span><span class="m">300</span><span class="p">)</span><span class="w">
+</span><span class="n">heightecdf</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">ecdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w">
+</span><span class="n">plot</span><span class="p">(</span><span class="n">values</span><span class="p">,</span><span class="w"> </span><span class="n">heightecdf</span><span class="p">(</span><span class="n">values</span><span class="p">),</span><span class="w"> </span><span class="n">type</span><span class="o">=</span><span class="s2">"l"</span><span class="p">,</span><span class="w">
+     </span><span class="n">xlab</span><span class="o">=</span><span class="s2">"a (Height in inches)"</span><span class="p">,</span><span class="n">ylab</span><span class="o">=</span><span class="s2">"Pr(x &lt;= a)"</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/random_variables-ecdf-1.png" alt="Empirical cummulative distribution function for height." /></p>
+
+<h4 id="histograms">Histograms</h4>
+
+<p>The <code class="highlighter-rouge">ecdf</code> function is a function that returns a function, which is
+not typical behavior of R functions. For that reason, we won’t discuss
+it further here. Furthermore, the <code class="highlighter-rouge">ecdf</code> is actually not as popular as
+histograms, which give us the same information, but show us the
+proportion of values in intervals:</p>
+
+<script type="math/tex; mode=display">\mbox{Pr}(a \leq x \leq b) = F(b) - F(a)</script>
+
+<p>Plotting these heights as bars is what we call a <em>histogram</em>. It is a
+more useful plot because we are usually more interested in intervals,
+such and such percent are between 70 inches and 71 inches, etc.,
+rather than the percent less than a particular height.
+It is also easier to distinguish different types (families) of distributions
+by looking at histograms. Here is a histogram of heights:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">hist</span><span class="p">(</span><span class="n">x</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>We can specify the bins and add better labels in the following way:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">bins</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">seq</span><span class="p">(</span><span class="n">smallest</span><span class="p">,</span><span class="w"> </span><span class="n">largest</span><span class="p">)</span><span class="w">
+</span><span class="n">hist</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">breaks</span><span class="o">=</span><span class="n">bins</span><span class="p">,</span><span class="n">xlab</span><span class="o">=</span><span class="s2">"Height (in inches)"</span><span class="p">,</span><span class="n">main</span><span class="o">=</span><span class="s2">"Adult men heights"</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/random_variables-histogram-1.png" alt="Histogram for heights." /></p>
+
+<p>Showing this plot to the alien is much more informative than showing numbers. With this simple plot, we can approximate the number of individuals in any given interval. For example, there are about 70 individuals over six feet (72 inches) tall.</p>
+
+<h2 id="probability-distribution">Probability Distribution</h2>
+
+<p>Summarizing lists of numbers is one powerful use of distribution. An
+even more important use is describing the possible outcomes of a
+random variable. Unlike a fixed list of numbers, we don’t actually observe all possible outcomes of random variables, so instead of describing proportions, we describe
+probabilities. For instance, if we pick a random height from our list,
+then the probability of it falling between <script type="math/tex">a</script> and <script type="math/tex">b</script> is denoted with:</p>
+
+<script type="math/tex; mode=display">\mbox{Pr}(a \leq X \leq b) = F(b) - F(a)</script>
+
+<p>Note that the <script type="math/tex">X</script> is now capitalized to distinguish it as a random
+variable and that the equation above defines the probability
+distribution of the random variable. Knowing this distribution is
+incredibly useful in science. For example, in the case above, if we
+know the distribution of the difference in mean of mouse weights
+when the null hypothesis is true, referred to as the <em>null distribution</em>, we can
+compute the probability of observing a value as large as we did,
+referred to as a <em>p-value</em>. In a previous section we ran what is
+called a <em>Monte Carlo</em> simulation (we will provide more details on
+Monte Carlo simulation in a later section) and we obtained 10,000
+outcomes of the random variable under the null hypothesis.  Let’s
+repeat the loop above, but this time let’s add a point to the figure
+every time we re-run the experiment. If you run this code, you can see
+the null distribution forming as the observed values stack on top of
+each other.</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">n</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">100</span><span class="w">
+</span><span class="n">library</span><span class="p">(</span><span class="n">rafalib</span><span class="p">)</span><span class="w">
+</span><span class="n">nullplot</span><span class="p">(</span><span class="m">-5</span><span class="p">,</span><span class="m">5</span><span class="p">,</span><span class="m">1</span><span class="p">,</span><span class="m">30</span><span class="p">,</span><span class="w"> </span><span class="n">xlab</span><span class="o">=</span><span class="s2">"Observed differences (grams)"</span><span class="p">,</span><span class="w"> </span><span class="n">ylab</span><span class="o">=</span><span class="s2">"Frequency"</span><span class="p">)</span><span class="w">
+</span><span class="n">totals</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">vector</span><span class="p">(</span><span class="s2">"numeric"</span><span class="p">,</span><span class="m">11</span><span class="p">)</span><span class="w">
+</span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="o">:</span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="n">control</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">population</span><span class="p">,</span><span class="m">12</span><span class="p">)</span><span class="w">
+  </span><span class="n">treatment</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">population</span><span class="p">,</span><span class="m">12</span><span class="p">)</span><span class="w">
+  </span><span class="n">nulldiff</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">treatment</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">control</span><span class="p">)</span><span class="w">
+  </span><span class="n">j</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">pmax</span><span class="p">(</span><span class="n">pmin</span><span class="p">(</span><span class="nf">round</span><span class="p">(</span><span class="n">nulldiff</span><span class="p">)</span><span class="m">+6</span><span class="p">,</span><span class="m">11</span><span class="p">),</span><span class="m">1</span><span class="p">)</span><span class="w">
+  </span><span class="n">totals</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">totals</span><span class="p">[</span><span class="n">j</span><span class="p">]</span><span class="m">+1</span><span class="w">
+  </span><span class="n">text</span><span class="p">(</span><span class="n">j</span><span class="m">-6</span><span class="p">,</span><span class="n">totals</span><span class="p">[</span><span class="n">j</span><span class="p">],</span><span class="n">pch</span><span class="o">=</span><span class="m">15</span><span class="p">,</span><span class="nf">round</span><span class="p">(</span><span class="n">nulldiff</span><span class="p">,</span><span class="m">1</span><span class="p">))</span><span class="w">
+  </span><span class="c1">##if(i &lt; 15) Sys.sleep(1) ##You can add this line to see values appear slowly
+</span><span class="w">  </span><span class="p">}</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/random_variables-null_distribution_illustration-1.png" alt="Illustration of the null distribution." /></p>
+
+<p>The figure above amounts to a histogram. From a histogram of the
+<code class="highlighter-rouge">null</code> vector we calculated earlier, we can see that values as large
+as <code class="highlighter-rouge">obsdiff</code> are relatively rare:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">hist</span><span class="p">(</span><span class="n">null</span><span class="p">,</span><span class="w"> </span><span class="n">freq</span><span class="o">=</span><span class="kc">TRUE</span><span class="p">)</span><span class="w">
+</span><span class="n">abline</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">obsdiff</span><span class="p">,</span><span class="w"> </span><span class="n">col</span><span class="o">=</span><span class="s2">"red"</span><span class="p">,</span><span class="w"> </span><span class="n">lwd</span><span class="o">=</span><span class="m">2</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/random_variables-null_and_obs-1.png" alt="Null distribution with observed difference marked with vertical red line." /></p>
+
+<p>An important point to keep in mind here is that while we defined <script type="math/tex">\mbox{Pr}(a)</script> by counting cases, we will learn that, in some circumstances, mathematics gives us formulas for <script type="math/tex">\mbox{Pr}(a)</script> that save us the trouble of computing them as we did here. One example of this powerful approach uses the normal distribution approximation.</p>
+
+<p><a name="normal_distribution"></a></p>
+
+<h2 id="normal-distribution">Normal Distribution</h2>
+
+<p>The probability distribution we see above approximates one that is very common in nature: the bell curve, also known as the normal distribution or Gaussian distribution. When the histogram of a list of numbers approximates the normal distribution, we can use a convenient mathematical formula to approximate the proportion of values or outcomes in any given interval:</p>
+
+<script type="math/tex; mode=display">% <![CDATA[
+\mbox{Pr}(a < x < b) = \int_a^b \frac{1}{\sqrt{2\pi\sigma^2}} \exp{\left( \frac{-(x-\mu)^2}{2 \sigma^2} \right)} \, dx %]]></script>
+
+<p>While the formula may look intimidating, don’t worry, you will never
+actually have to type it out, as it is stored in a more convenient
+form (as <code class="highlighter-rouge">pnorm</code> in R which sets <em>a</em> to <script type="math/tex">-\infty</script>, and takes <em>b</em> as an argument).</p>
+
+<p>Here <script type="math/tex">\mu</script> and <script type="math/tex">\sigma</script> are referred to as the mean and the standard
+deviation of the population (we explain these in more detail in
+another section). If this <em>normal approximation</em> holds for our list, then the
+population mean and variance of our list can be used in the formula
+above. An example of this would be when we noted above that only 1.5%
+of values on the null distribution were above <code class="highlighter-rouge">obsdiff</code>. We can
+compute the proportion of values below a value <code class="highlighter-rouge">x</code> with
+<code class="highlighter-rouge">pnorm(x,mu,sigma)</code> without knowing all the values. The normal
+approximation works very well here:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="m">1</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">pnorm</span><span class="p">(</span><span class="n">obsdiff</span><span class="p">,</span><span class="n">mean</span><span class="p">(</span><span class="n">null</span><span class="p">),</span><span class="n">sd</span><span class="p">(</span><span class="n">null</span><span class="p">))</span><span class="w"> 
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 0.01391929
+</code></pre>
+</div>
+
+<p>Later, we will learn that there is a mathematical explanation for this. A very useful characteristic of this approximation is that one only needs to know <script type="math/tex">\mu</script> and <script type="math/tex">\sigma</script> to describe the entire distribution. From this, we can compute the proportion of values in any interval.</p>
+
+<h4 id="summary">Summary</h4>
+
+<p>So computing a p-value for the difference in diet for the mice was
+pretty easy, right? But why are we not done? To make the calculation,
+we did the equivalent of buying all the mice available from The
+Jackson Laboratory and performing our experiment repeatedly to define
+the null distribution. Yet this is not something we can do in
+practice. Statistical Inference is the mathematical theory that
+permits you to approximate this with only the data from your sample,
+i.e. the original 24 mice. We will focus on this in the following
+sections.</p>
+
+<h4 id="setting-the-random-seed">Setting the random seed</h4>
+
+<p>Before we continue, we briefly explain the following important line of
+code:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">set.seed</span><span class="p">(</span><span class="m">1</span><span class="p">)</span><span class="w"> 
+</span></code></pre>
+</div>
+
+<p>Throughout this book, we use random number generators. This implies that many of the results presented can actually change by chance, including the correct answer to problems. One way to ensure that results do not change is by setting R’s random number generation seed. For more on the topic please read the help file:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="o">?</span><span class="n">set.seed</span><span class="w">
+</span></code></pre>
+</div>
+
+
+  </div>
+</div>
+
+
+      </div>
+      <hr>
+      <footer>
+        <p><small>
+  <!-- start of Karl's footer; modify this part -->
+
+<a href="http://genomicsclass.github.io/book/">PH525x</a>, 
+Rafael Irizarry and Michael Love, 
+<a href="https://github.com/genomicsclass/labs/blob/master/LICENSE">MIT License</a>
+
+  <!-- end of Karl's footer; modify this part -->
+        </small></p>
+      </footer>
+
+    </div>
+
+    
+  </body>
+</html>
+
