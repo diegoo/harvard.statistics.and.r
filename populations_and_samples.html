@@ -1,0 +1,182 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Population, Samples, and Estimates</title>
+    
+    <meta name="author" content="Rafael Irizarry and Michael Love">
+
+    <!-- Enable responsive viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Le HTML5 shim, for IE6-8 support of HTML elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <!-- Le styles -->
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/bootstrap/css/bootstrap.2.2.2.min.css" rel="stylesheet">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/style.css?body=1" rel="stylesheet" type="text/css" media="all">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/kbroman.css" rel="stylesheet" type="text/css" media="all">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/knitr.css" rel="stylesheet" type="text/css" media="all">
+
+    <!-- Le fav and touch icons -->
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/ico/favicon.ico" rel="icon" type="image/png">
+
+    <!-- atom & rss feed -->
+    <link href="http://genomicsclass.github.io/booknil" type="application/atom+xml" rel="alternate" title="Sitewide ATOM Feed">
+    <link href="http://genomicsclass.github.io/booknil" type="application/rss+xml" rel="alternate" title="Sitewide RSS Feed">
+
+    <!-- knitr javascript -->
+    <script src="http://genomicsclass.github.io/book/assets/themes/twitter/knitr.js" type="text/javascript"></script>
+
+    <!-- mathjax javascript -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+      });
+    </script>
+
+    <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
+
+
+  </head>
+
+  <body>
+    <div class="navbar">
+      <div class="navbar-inner">
+        <div class="container-narrow">
+          <a class="brand" href="http://genomicsclass.github.io/book">PH525x series - Biomedical Data Science</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-narrow">
+
+      <div class="content">
+        
+
+<div class="page-header">
+  <h2>Population, Samples, and Estimates </h2>
+</div>
+
+<div class="row-fluid">
+  <div class="span12">
+    <h2 id="populations-samples-and-estimates">Populations, Samples and Estimates</h2>
+
+<p>Now that we have introduced the idea of a random variable, a null distribution, and a p-value, we are ready to describe the mathematical theory that permits us to compute p-values in practice. We will also learn about confidence intervals and power calculations.</p>
+
+<h4 id="population-parameters">Population parameters</h4>
+
+<p>A first step in statistical inference is to understand what population
+you are interested in. In the mouse weight example, we have two
+populations: female mice on control diets and female mice on high fat
+diets, with weight being the outcome of interest. We consider this
+population to be fixed, and the randomness comes from the
+sampling. One reason we have been using this dataset as an example is
+because we happen to have the weights of all the mice of this
+type. Here we download and read in this dataset:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">downloader</span><span class="p">)</span><span class="w">
+</span><span class="n">url</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="s2">"https://raw.githubusercontent.com/genomicsclass/dagdata/master/inst/extdata/mice_pheno.csv"</span><span class="w">
+</span><span class="n">filename</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="s2">"mice_pheno.csv"</span><span class="w">
+</span><span class="n">download</span><span class="p">(</span><span class="n">url</span><span class="p">,</span><span class="n">destfile</span><span class="o">=</span><span class="n">filename</span><span class="p">)</span><span class="w">
+</span><span class="n">dat</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">read.csv</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>We can then access the population values and determine, for example, how many we have. Here we compute the size of the control population:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span><span class="w">
+</span><span class="n">controlPopulation</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span><span class="n">Sex</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"F"</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">Diet</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"chow"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> 
+  </span><span class="n">select</span><span class="p">(</span><span class="n">Bodyweight</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">unlist</span><span class="w">
+</span><span class="nf">length</span><span class="p">(</span><span class="n">controlPopulation</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 225
+</code></pre>
+</div>
+
+<p>We usually denote these values as <script type="math/tex">x_1,\dots,x_m</script>. In this case, <script type="math/tex">m</script> is the number computed above. We can do the same for the high fat diet population:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">hfPopulation</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span><span class="n">Sex</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"F"</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">Diet</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"hf"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">  
+  </span><span class="n">select</span><span class="p">(</span><span class="n">Bodyweight</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">unlist</span><span class="w">
+</span><span class="nf">length</span><span class="p">(</span><span class="n">hfPopulation</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 200
+</code></pre>
+</div>
+
+<p>and denote with <script type="math/tex">y_1,\dots,y_n</script>.</p>
+
+<p>We can then define summaries of interest for these populations, such as the mean and variance.</p>
+
+<p>The mean:</p>
+
+<script type="math/tex; mode=display">\mu_X = \frac{1}{m}\sum_{i=1}^m x_i \mbox{ and } \mu_Y = \frac{1}{n} \sum_{i=1}^n y_i</script>
+
+<p>The variance:</p>
+
+<script type="math/tex; mode=display">\sigma_X^2 = \frac{1}{m}\sum_{i=1}^m (x_i-\mu_X)^2 \mbox{ and } \sigma_Y^2 = \frac{1}{n} \sum_{i=1}^n (y_i-\mu_Y)^2</script>
+
+<p>with the standard deviation being the square root of the variance. We refer to such quantities that can be obtained from the population as <em>population parameters</em>. The question we started out asking can now be written mathematically: is <script type="math/tex">\mu_Y - \mu_X = 0</script> ?</p>
+
+<p>Although in our illustration we have all the values and can check if this is true, in practice we do not. For example, in practice it would be prohibitively expensive to buy all the mice in a population. Here we learn how taking a <em>sample</em> permits us to answer our questions. This is the essence of statistical inference.</p>
+
+<h4 id="sample-estimates">Sample estimates</h4>
+
+<p>In the previous chapter, we obtained samples of 12 mice from each
+population. We represent data from samples with capital letters to
+indicate that they are random. This is common practice in statistics,
+although it is not always followed. So the samples are <script type="math/tex">X_1,\dots,X_M</script>
+and <script type="math/tex">Y_1,\dots,Y_N</script> and, in this case, <script type="math/tex">N=M=12</script>. In contrast and as we
+saw above, when we list out the values of the population, which are
+set and not random, we use lower-case letters.</p>
+
+<p>Since we want to know if <script type="math/tex">\mu_Y - \mu_X</script> is 0, we consider the sample version: <script type="math/tex">\bar{Y}-\bar{X}</script>  with:</p>
+
+<script type="math/tex; mode=display">\bar{X}=\frac{1}{M} \sum_{i=1}^M X_i 
+\mbox{ and }\bar{Y}=\frac{1}{N} \sum_{i=1}^N Y_i.</script>
+
+<p>Note that this difference of averages is also a random
+variable. Previously, we learned about the behavior of random variables
+with an exercise that involved repeatedly sampling from the original
+distribution. Of course, this is not an exercise that we can execute
+in practice. In this particular case it would involve buying 24 mice
+over and over again. Here we described the mathematical theory that
+mathematically relates <script type="math/tex">\bar{X}</script> to <script type="math/tex">\mu_X</script> and <script type="math/tex">\bar{Y}</script> to <script type="math/tex">\mu_Y</script>,
+that will in turn help us understand the relationship between
+<script type="math/tex">\bar{Y}-\bar{X}</script>  and <script type="math/tex">\mu_Y - \mu_X</script>. Specifically, we will describe
+how the Central Limit Theorem permits us to use an approximation to
+answer this question, as well as motivate the widely used t-distribution.</p>
+
+
+  </div>
+</div>
+
+
+      </div>
+      <hr>
+      <footer>
+        <p><small>
+  <!-- start of Karl's footer; modify this part -->
+
+<a href="http://genomicsclass.github.io/book/">PH525x</a>, 
+Rafael Irizarry and Michael Love, 
+<a href="https://github.com/genomicsclass/labs/blob/master/LICENSE">MIT License</a>
+
+  <!-- end of Karl's footer; modify this part -->
+        </small></p>
+      </footer>
+
+    </div>
+
+    
+  </body>
+</html>
+
