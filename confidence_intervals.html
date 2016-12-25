@@ -1,0 +1,378 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Confidence Intervals</title>
+    
+    <meta name="author" content="Rafael Irizarry and Michael Love">
+
+    <!-- Enable responsive viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Le HTML5 shim, for IE6-8 support of HTML elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <!-- Le styles -->
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/bootstrap/css/bootstrap.2.2.2.min.css" rel="stylesheet">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/style.css?body=1" rel="stylesheet" type="text/css" media="all">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/kbroman.css" rel="stylesheet" type="text/css" media="all">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/knitr.css" rel="stylesheet" type="text/css" media="all">
+
+    <!-- Le fav and touch icons -->
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/ico/favicon.ico" rel="icon" type="image/png">
+
+    <!-- atom & rss feed -->
+    <link href="http://genomicsclass.github.io/booknil" type="application/atom+xml" rel="alternate" title="Sitewide ATOM Feed">
+    <link href="http://genomicsclass.github.io/booknil" type="application/rss+xml" rel="alternate" title="Sitewide RSS Feed">
+
+    <!-- knitr javascript -->
+    <script src="http://genomicsclass.github.io/book/assets/themes/twitter/knitr.js" type="text/javascript"></script>
+
+    <!-- mathjax javascript -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+      });
+    </script>
+
+    <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
+
+
+  </head>
+
+  <body>
+    <div class="navbar">
+      <div class="navbar-inner">
+        <div class="container-narrow">
+          <a class="brand" href="http://genomicsclass.github.io/book">PH525x series - Biomedical Data Science</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-narrow">
+
+      <div class="content">
+        
+
+<div class="page-header">
+  <h2>Confidence Intervals </h2>
+</div>
+
+<div class="row-fluid">
+  <div class="span12">
+    <h2 id="confidence-intervals">Confidence Intervals</h2>
+
+<p>We have described how to compute p-values which are ubiquitous in the
+life sciences. However, we do not recommend reporting p-values as the
+only statistical summary of your results. The reason is simple:
+statistical significance does not guarantee scientific
+significance. With large enough sample sizes, one might detect a
+statistically significance difference in weight of, say, 1
+microgram. But is this an important finding? Would we say a diet
+results in higher weight if the increase is less than a fraction of a
+percent? The problem with reporting only p-values is that you will not
+provide a very important piece of information: the effect size. Recall
+that the effect size is the observed difference. Sometimes the effect
+size is divided by the mean of the control group and so expressed as a
+percent increase.</p>
+
+<p>A much more attractive alternative is to report confidence
+intervals. A confidence interval includes information about your
+estimated effect size and the uncertainty associated with this
+estimate. Here we use the mice data to illustrate the concept behind
+confidence intervals.</p>
+
+<h4 id="confidence-interval-for-population-mean">Confidence Interval For Population Mean</h4>
+
+<p>Before we show how to construct a confidence interval for the
+difference between the two groups, we will
+show how to construct a confidence interval for the
+population mean of control female mice.
+Then we will return to the group difference after we’ve learned how to build
+confidence intervals in the simple case.
+We start by reading in the data and selecting the appropriate rows:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">dat</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">read.csv</span><span class="p">(</span><span class="s2">"mice_pheno.csv"</span><span class="p">)</span><span class="w">
+</span><span class="n">chowPopulation</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">dat</span><span class="p">[</span><span class="n">dat</span><span class="o">$</span><span class="n">Sex</span><span class="o">==</span><span class="s2">"F"</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">dat</span><span class="o">$</span><span class="n">Diet</span><span class="o">==</span><span class="s2">"chow"</span><span class="p">,</span><span class="m">3</span><span class="p">]</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>The population average <script type="math/tex">\mu_X</script> is our parameter of interest here:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">mu_chow</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">)</span><span class="w">
+</span><span class="n">print</span><span class="p">(</span><span class="n">mu_chow</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 23.89338
+</code></pre>
+</div>
+
+<p>We are interested in estimating this parameter. In practice, we do not get to see the entire population so, as we did for p-values, we demonstrate how we can use samples to do this. Let’s start with a sample of size 30:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">N</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">30</span><span class="w">
+</span><span class="n">chow</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">,</span><span class="n">N</span><span class="p">)</span><span class="w">
+</span><span class="n">print</span><span class="p">(</span><span class="n">mean</span><span class="p">(</span><span class="n">chow</span><span class="p">))</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 23.351
+</code></pre>
+</div>
+
+<p>We know this is a random variable, so the sample average will not be a perfect estimate. In fact, because in this illustrative example we know the value of the parameter, we can see that they are not exactly the same. A confidence interval is a statistical way of reporting our finding, the sample average, in a way that explicitly summarizes the variability of our random variable.</p>
+
+<p>With a sample size of 30, we will use the CLT. The CLT tells us that <script type="math/tex">\bar{X}</script> or <code class="highlighter-rouge">mean(chow)</code> follows a normal distribution with mean <script type="math/tex">\mu_X</script> or <code class="highlighter-rouge">mean(chowPopulation)</code> and standard error approximately  <script type="math/tex">s_X/\sqrt{N}</script> or:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">se</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sd</span><span class="p">(</span><span class="n">chow</span><span class="p">)</span><span class="o">/</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">N</span><span class="p">)</span><span class="w">
+</span><span class="n">print</span><span class="p">(</span><span class="n">se</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 0.4781652
+</code></pre>
+</div>
+
+<p><a name="interval"></a></p>
+
+<h4 id="defining-the-interval">Defining The Interval</h4>
+
+<p>A 95% confidence interval (we can use percentages other than 95%) is a
+random interval with a 95% probability of falling on the parameter we
+are estimating. Keep in mind that saying 95% of random intervals will fall on the
+true value (our definition above) is <em>not the same</em> as saying there is
+a 95% chance that the true value falls in our interval. 
+To construct it, we note that the CLT tells us that 
+<script type="math/tex">\sqrt{N} (\bar{X}-\mu_X) / s_X</script> follows a normal distribution with mean 0 and
+SD 1. This implies that the probability of this event:</p>
+
+<script type="math/tex; mode=display">-2 \leq \sqrt{N} (\bar{X}-\mu_X)/s_X \leq 2</script>
+
+<p>which written in R code is:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">pnorm</span><span class="p">(</span><span class="m">2</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">pnorm</span><span class="p">(</span><span class="m">-2</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 0.9544997
+</code></pre>
+</div>
+
+<p>…is about 95% (to get closer use <code class="highlighter-rouge">qnorm(1-0.05/2)</code> instead of
+2). Now do some basic algebra to clear out everything and leave
+<script type="math/tex">\mu_X</script> alone in the middle and you get that the following event:</p>
+
+<script type="math/tex; mode=display">\bar{X}-2 s_X/\sqrt{N} \leq \mu_X \leq \bar{X}+2s_X/\sqrt{N}</script>
+
+<p>has a probability of 95%.</p>
+
+<p>Be aware that it is the edges of the interval 
+<script type="math/tex">\bar{X} \pm 2 s_X / \sqrt{N}</script> , not <script type="math/tex">\mu_X</script> , 
+that are random. Again, the definition of
+the confidence interval is that 95% of <em>random intervals</em> will contain
+the true, fixed value <script type="math/tex">\mu_X</script>. For a specific interval that has been
+calculated, the probability is either 0 or 1 that it contains the
+fixed population mean <script type="math/tex">\mu_X</script>.</p>
+
+<p>Let’s demonstrate this logic through simulation. We can construct this
+interval with R relatively easily:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">Q</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">qnorm</span><span class="p">(</span><span class="m">1</span><span class="o">-</span><span class="w"> </span><span class="m">0.05</span><span class="o">/</span><span class="m">2</span><span class="p">)</span><span class="w">
+</span><span class="n">interval</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="n">mean</span><span class="p">(</span><span class="n">chow</span><span class="p">)</span><span class="o">-</span><span class="n">Q</span><span class="o">*</span><span class="n">se</span><span class="p">,</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">chow</span><span class="p">)</span><span class="o">+</span><span class="n">Q</span><span class="o">*</span><span class="n">se</span><span class="w"> </span><span class="p">)</span><span class="w">
+</span><span class="n">interval</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 22.41381 24.28819
+</code></pre>
+</div>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">interval</span><span class="p">[</span><span class="m">1</span><span class="p">]</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">mu_chow</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">interval</span><span class="p">[</span><span class="m">2</span><span class="p">]</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">mu_chow</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] TRUE
+</code></pre>
+</div>
+
+<p>which happens to cover <script type="math/tex">\mu_X</script> or <code class="highlighter-rouge">mean(chowPopulation)</code>. However, we can take another sample and we might not be as lucky. In fact, the theory tells us that we will cover <script type="math/tex">\mu_X</script> 95% of the time. Because we have access to the population data, we can confirm this by taking several new samples:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">rafalib</span><span class="p">)</span><span class="w">
+</span><span class="n">B</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">250</span><span class="w">
+</span><span class="n">mypar</span><span class="p">()</span><span class="w">
+</span><span class="n">plot</span><span class="p">(</span><span class="n">mean</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">)</span><span class="o">+</span><span class="nf">c</span><span class="p">(</span><span class="m">-7</span><span class="p">,</span><span class="m">7</span><span class="p">),</span><span class="nf">c</span><span class="p">(</span><span class="m">1</span><span class="p">,</span><span class="m">1</span><span class="p">),</span><span class="n">type</span><span class="o">=</span><span class="s2">"n"</span><span class="p">,</span><span class="w">
+     </span><span class="n">xlab</span><span class="o">=</span><span class="s2">"weight"</span><span class="p">,</span><span class="n">ylab</span><span class="o">=</span><span class="s2">"interval"</span><span class="p">,</span><span class="n">ylim</span><span class="o">=</span><span class="nf">c</span><span class="p">(</span><span class="m">1</span><span class="p">,</span><span class="n">B</span><span class="p">))</span><span class="w">
+</span><span class="n">abline</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">mean</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">))</span><span class="w">
+</span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="o">:</span><span class="n">B</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="n">chow</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">,</span><span class="n">N</span><span class="p">)</span><span class="w">
+  </span><span class="n">se</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sd</span><span class="p">(</span><span class="n">chow</span><span class="p">)</span><span class="o">/</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">N</span><span class="p">)</span><span class="w">
+  </span><span class="n">interval</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="n">mean</span><span class="p">(</span><span class="n">chow</span><span class="p">)</span><span class="o">-</span><span class="n">Q</span><span class="o">*</span><span class="n">se</span><span class="p">,</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">chow</span><span class="p">)</span><span class="o">+</span><span class="n">Q</span><span class="o">*</span><span class="n">se</span><span class="p">)</span><span class="w">
+  </span><span class="n">covered</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> 
+    </span><span class="n">mean</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">interval</span><span class="p">[</span><span class="m">2</span><span class="p">]</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">interval</span><span class="p">[</span><span class="m">1</span><span class="p">]</span><span class="w">
+  </span><span class="n">color</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">ifelse</span><span class="p">(</span><span class="n">covered</span><span class="p">,</span><span class="m">1</span><span class="p">,</span><span class="m">2</span><span class="p">)</span><span class="w">
+  </span><span class="n">lines</span><span class="p">(</span><span class="n">interval</span><span class="p">,</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">i</span><span class="p">),</span><span class="n">col</span><span class="o">=</span><span class="n">color</span><span class="p">)</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/confidence_intervals-confidence_interval_n30-1.png" alt="We show 250 random realizations of 95% confidence intervals. The color denotes if the interval fell on the parameter or not." /></p>
+
+<p>You can run this repeatedly to see what happens. You will see that in about 5% of the cases, we fail to cover <script type="math/tex">\mu_X</script>.</p>
+
+<p><a name="smallsample"></a></p>
+
+<h4 id="small-sample-size-and-the-clt">Small Sample Size And The CLT</h4>
+
+<p>For <script type="math/tex">N=30</script>, the CLT works very well. However, if <script type="math/tex">N=5</script>, do these confidence intervals work as well? We used the CLT to create our intervals, and with <script type="math/tex">N=5</script> it may not be as useful an approximation. We can confirm this with a simulation:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">mypar</span><span class="p">()</span><span class="w">
+</span><span class="n">plot</span><span class="p">(</span><span class="n">mean</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">)</span><span class="o">+</span><span class="nf">c</span><span class="p">(</span><span class="m">-7</span><span class="p">,</span><span class="m">7</span><span class="p">),</span><span class="nf">c</span><span class="p">(</span><span class="m">1</span><span class="p">,</span><span class="m">1</span><span class="p">),</span><span class="n">type</span><span class="o">=</span><span class="s2">"n"</span><span class="p">,</span><span class="w">
+     </span><span class="n">xlab</span><span class="o">=</span><span class="s2">"weight"</span><span class="p">,</span><span class="n">ylab</span><span class="o">=</span><span class="s2">"interval"</span><span class="p">,</span><span class="n">ylim</span><span class="o">=</span><span class="nf">c</span><span class="p">(</span><span class="m">1</span><span class="p">,</span><span class="n">B</span><span class="p">))</span><span class="w">
+</span><span class="n">abline</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">mean</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">))</span><span class="w">
+</span><span class="n">Q</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">qnorm</span><span class="p">(</span><span class="m">1</span><span class="o">-</span><span class="w"> </span><span class="m">0.05</span><span class="o">/</span><span class="m">2</span><span class="p">)</span><span class="w">
+</span><span class="n">N</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">5</span><span class="w">
+</span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="o">:</span><span class="n">B</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="n">chow</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">,</span><span class="n">N</span><span class="p">)</span><span class="w">
+  </span><span class="n">se</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sd</span><span class="p">(</span><span class="n">chow</span><span class="p">)</span><span class="o">/</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">N</span><span class="p">)</span><span class="w">
+  </span><span class="n">interval</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="n">mean</span><span class="p">(</span><span class="n">chow</span><span class="p">)</span><span class="o">-</span><span class="n">Q</span><span class="o">*</span><span class="n">se</span><span class="p">,</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">chow</span><span class="p">)</span><span class="o">+</span><span class="n">Q</span><span class="o">*</span><span class="n">se</span><span class="p">)</span><span class="w">
+  </span><span class="n">covered</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">interval</span><span class="p">[</span><span class="m">2</span><span class="p">]</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">interval</span><span class="p">[</span><span class="m">1</span><span class="p">]</span><span class="w">
+  </span><span class="n">color</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">ifelse</span><span class="p">(</span><span class="n">covered</span><span class="p">,</span><span class="m">1</span><span class="p">,</span><span class="m">2</span><span class="p">)</span><span class="w">
+  </span><span class="n">lines</span><span class="p">(</span><span class="n">interval</span><span class="p">,</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">i</span><span class="p">),</span><span class="n">col</span><span class="o">=</span><span class="n">color</span><span class="p">)</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/confidence_intervals-confidence_interval_n5-1.png" alt="We show 250 random realizations of 95% confidence intervals, but now for a smaller sample size. The confidence interval is based on the CLT approximation. The color denotes if the interval fell on the parameter or not." /></p>
+
+<p>Despite the intervals being larger ( we are dividing by <script type="math/tex">\sqrt{5}</script>
+instead of <script type="math/tex">\sqrt{30}</script> ), we see many more intervals not covering
+<script type="math/tex">\mu_X</script>. This is because the CLT is incorrectly telling us that the
+distribution of the <code class="highlighter-rouge">mean(chow)</code> is approximately normal when, in fact,
+it has a fatter tail (the parts of the distribution going to
+<script type="math/tex">\pm \infty</script>). This mistake affects us in the calculation of <code class="highlighter-rouge">Q</code>, which
+assumes a normal distribution and uses <code class="highlighter-rouge">qnorm</code>. The t-distribution
+might be more appropriate. All we have to do is re-run the above, but
+change how we calculate <code class="highlighter-rouge">Q</code> to use <code class="highlighter-rouge">qt</code> instead of <code class="highlighter-rouge">qnorm</code>.</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">mypar</span><span class="p">()</span><span class="w">
+</span><span class="n">plot</span><span class="p">(</span><span class="n">mean</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="m">-7</span><span class="p">,</span><span class="m">7</span><span class="p">),</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="m">1</span><span class="p">,</span><span class="m">1</span><span class="p">),</span><span class="w"> </span><span class="n">type</span><span class="o">=</span><span class="s2">"n"</span><span class="p">,</span><span class="w">
+     </span><span class="n">xlab</span><span class="o">=</span><span class="s2">"weight"</span><span class="p">,</span><span class="w"> </span><span class="n">ylab</span><span class="o">=</span><span class="s2">"interval"</span><span class="p">,</span><span class="w"> </span><span class="n">ylim</span><span class="o">=</span><span class="nf">c</span><span class="p">(</span><span class="m">1</span><span class="p">,</span><span class="n">B</span><span class="p">))</span><span class="w">
+</span><span class="n">abline</span><span class="p">(</span><span class="n">v</span><span class="o">=</span><span class="n">mean</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">))</span><span class="w">
+</span><span class="c1">##Q &lt;- qnorm(1- 0.05/2) ##no longer normal so use:
+</span><span class="n">Q</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">qt</span><span class="p">(</span><span class="m">1</span><span class="o">-</span><span class="w"> </span><span class="m">0.05</span><span class="o">/</span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="n">df</span><span class="o">=</span><span class="m">4</span><span class="p">)</span><span class="w">
+</span><span class="n">N</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">5</span><span class="w">
+</span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="m">1</span><span class="o">:</span><span class="n">B</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="n">chow</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="p">)</span><span class="w">
+  </span><span class="n">se</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sd</span><span class="p">(</span><span class="n">chow</span><span class="p">)</span><span class="o">/</span><span class="nf">sqrt</span><span class="p">(</span><span class="n">N</span><span class="p">)</span><span class="w">
+  </span><span class="n">interval</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="n">mean</span><span class="p">(</span><span class="n">chow</span><span class="p">)</span><span class="o">-</span><span class="n">Q</span><span class="o">*</span><span class="n">se</span><span class="p">,</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">chow</span><span class="p">)</span><span class="o">+</span><span class="n">Q</span><span class="o">*</span><span class="n">se</span><span class="w"> </span><span class="p">)</span><span class="w">
+  </span><span class="n">covered</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">)</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">interval</span><span class="p">[</span><span class="m">2</span><span class="p">]</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">chowPopulation</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">interval</span><span class="p">[</span><span class="m">1</span><span class="p">]</span><span class="w">
+  </span><span class="n">color</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">ifelse</span><span class="p">(</span><span class="n">covered</span><span class="p">,</span><span class="m">1</span><span class="p">,</span><span class="m">2</span><span class="p">)</span><span class="w">
+  </span><span class="n">lines</span><span class="p">(</span><span class="n">interval</span><span class="p">,</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">i</span><span class="p">),</span><span class="n">col</span><span class="o">=</span><span class="n">color</span><span class="p">)</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/confidence_intervals-confidence_interval_tdist_n5-1.png" alt="We show 250 random realizations of 95% confidence intervals, but now for a smaller sample size. The confidence is now based on the t-distribution approximation. The color denotes if the interval fell on the parameter or not." /></p>
+
+<p>Now the intervals are made bigger. This is because the t-distribution has fatter tails and therefore:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">qt</span><span class="p">(</span><span class="m">1</span><span class="o">-</span><span class="w"> </span><span class="m">0.05</span><span class="o">/</span><span class="m">2</span><span class="p">,</span><span class="w"> </span><span class="n">df</span><span class="o">=</span><span class="m">4</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 2.776445
+</code></pre>
+</div>
+
+<p>is bigger than…</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">qnorm</span><span class="p">(</span><span class="m">1</span><span class="o">-</span><span class="w"> </span><span class="m">0.05</span><span class="o">/</span><span class="m">2</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 1.959964
+</code></pre>
+</div>
+
+<p>…which makes the intervals larger and hence cover <script type="math/tex">\mu_X</script> more frequently; in fact, about 95% of the time.</p>
+
+<h4 id="connection-between-confidence-intervals-and-p-values">Connection Between Confidence Intervals and p-values</h4>
+
+<p>We recommend that in practice confidence intervals be reported instead of p-values. If for some reason you are required to provide p-values, or required that your results are significant at the 0.05 of 0.01 levels, confidence intervals do provide this information.</p>
+
+<p>If we are talking about a t-test p-value, we are asking if 
+differences as extreme as the one we observe, <script type="math/tex">\bar{Y} - \bar{X}</script>, are likely when the difference between the population averages is actually equal to
+zero. So we can form a confidence interval with the observed 
+difference. Instead of writing <script type="math/tex">\bar{Y} - \bar{X}</script> repeatedly, let’s
+define this difference as a new variable 
+<script type="math/tex">d \equiv \bar{Y} - \bar{X}</script> .</p>
+
+<p>Suppose you use CLT and report <script type="math/tex">d \pm 2 s_d/\sqrt{N}</script> as a
+95% confidence interval for the difference and this interval does not
+include 0 (a false positive).
+Because the interval does not include 0, this implies that either
+<script type="math/tex">D - 2 s_d/\sqrt{N}  > 0</script> or <script type="math/tex">% <![CDATA[
+d + 2 s_d/\sqrt{N} < 0 %]]></script>.
+This suggests that either
+<script type="math/tex">\sqrt{N}d/s_d > 2</script> or <script type="math/tex">% <![CDATA[
+\sqrt{N}d/s_d < 2 %]]></script>.  This
+then implies that the t-statistic is more extreme than 2, which in
+turn suggests that the p-value must be smaller than 0.05
+(approximately, for a more exact calculation use <code class="highlighter-rouge">qnorm(.05/2)</code> instead of 2).
+The same calculation can be made if we use the t-distribution instead of
+CLT (with <code class="highlighter-rouge">qt(.05/2, df=N-2)</code>).
+In summary, if a 95% or 99% confidence interval does not include
+0, then the p-value must be smaller than 0.05 or 0.01 respectively.</p>
+
+<p>Note that the confidence interval for the difference <script type="math/tex">d</script> is provided by the <code class="highlighter-rouge">t.test</code> function:</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] -0.04296563  6.08463229
+## attr(,"conf.level")
+## [1] 0.95
+</code></pre>
+</div>
+
+<p>In this case, the 95% confidence interval does include 0 and we observe that the p-value is larger than 0.05 as predicted. If we change this to a 90% confidence interval, then:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">t.test</span><span class="p">(</span><span class="n">treatment</span><span class="p">,</span><span class="n">control</span><span class="p">,</span><span class="n">conf.level</span><span class="o">=</span><span class="m">0.9</span><span class="p">)</span><span class="o">$</span><span class="n">conf.int</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 0.4871597 5.5545070
+## attr(,"conf.level")
+## [1] 0.9
+</code></pre>
+</div>
+
+<p>0 is no longer in the confidence interval (which is expected because
+the p-value is smaller than 0.10).</p>
+
+
+  </div>
+</div>
+
+
+      </div>
+      <hr>
+      <footer>
+        <p><small>
+  <!-- start of Karl's footer; modify this part -->
+
+<a href="http://genomicsclass.github.io/book/">PH525x</a>, 
+Rafael Irizarry and Michael Love, 
+<a href="https://github.com/genomicsclass/labs/blob/master/LICENSE">MIT License</a>
+
+  <!-- end of Karl's footer; modify this part -->
+        </small></p>
+      </footer>
+
+    </div>
+
+    
+  </body>
+</html>
+

@@ -1,0 +1,210 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Monte Carlo methods</title>
+    
+    <meta name="author" content="Rafael Irizarry and Michael Love">
+
+    <!-- Enable responsive viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Le HTML5 shim, for IE6-8 support of HTML elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <!-- Le styles -->
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/bootstrap/css/bootstrap.2.2.2.min.css" rel="stylesheet">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/style.css?body=1" rel="stylesheet" type="text/css" media="all">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/kbroman.css" rel="stylesheet" type="text/css" media="all">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/knitr.css" rel="stylesheet" type="text/css" media="all">
+
+    <!-- Le fav and touch icons -->
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/ico/favicon.ico" rel="icon" type="image/png">
+
+    <!-- atom & rss feed -->
+    <link href="http://genomicsclass.github.io/booknil" type="application/atom+xml" rel="alternate" title="Sitewide ATOM Feed">
+    <link href="http://genomicsclass.github.io/booknil" type="application/rss+xml" rel="alternate" title="Sitewide RSS Feed">
+
+    <!-- knitr javascript -->
+    <script src="http://genomicsclass.github.io/book/assets/themes/twitter/knitr.js" type="text/javascript"></script>
+
+    <!-- mathjax javascript -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+      });
+    </script>
+
+    <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
+
+
+  </head>
+
+  <body>
+    <div class="navbar">
+      <div class="navbar-inner">
+        <div class="container-narrow">
+          <a class="brand" href="http://genomicsclass.github.io/book">PH525x series - Biomedical Data Science</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-narrow">
+
+      <div class="content">
+        
+
+<div class="page-header">
+  <h2>Monte Carlo methods </h2>
+</div>
+
+<div class="row-fluid">
+  <div class="span12">
+    <h2 id="monte-carlo-simulation">Monte Carlo Simulation</h2>
+
+<p>Computers can be used to generate pseudo-random numbers. For practical purposes these pseudo-random numbers can be used to imitate random variables from the real world. This permits us to examine properties of random variables using a computer instead of theoretical or analytical derivations. One very useful aspect of this concept is that we can create <em>simulated</em> data to test out ideas or competing methods, without actually having to perform laboratory experiments.</p>
+
+<p>Simulations can also be used to check theoretical or analytical results. Also, many of the theoretical results we use in statistics are based on asymptotics: they hold when the sample size goes to infinity. In practice, we never have an infinite number of samples so we may want to know how well the theory works with our actual sample size. Sometimes we can answer this question analytically, but not always. Simulations are extremely useful in these cases.</p>
+
+<p>As an example, let’s use a Monte Carlo simulation to compare the CLT to the t-distribution approximation for different sample sizes.</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span><span class="w">
+</span><span class="n">dat</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">read.csv</span><span class="p">(</span><span class="s2">"mice_pheno.csv"</span><span class="p">)</span><span class="w">
+</span><span class="n">controlPopulation</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span><span class="n">Sex</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"F"</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">Diet</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"chow"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">  
+  </span><span class="n">select</span><span class="p">(</span><span class="n">Bodyweight</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">unlist</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>We will build a function that automatically generates a t-statistic under the null hypothesis for a any sample size of <code class="highlighter-rouge">n</code>.</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">ttestgenerator</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="c1">#note that here we have a false "high fat" group where we actually
+</span><span class="w">  </span><span class="c1">#sample from the nonsmokers. this is because we are modeling the *null*
+</span><span class="w">  </span><span class="n">cases</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">controlPopulation</span><span class="p">,</span><span class="n">n</span><span class="p">)</span><span class="w">
+  </span><span class="n">controls</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">controlPopulation</span><span class="p">,</span><span class="n">n</span><span class="p">)</span><span class="w">
+  </span><span class="n">tstat</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="p">(</span><span class="n">mean</span><span class="p">(</span><span class="n">cases</span><span class="p">)</span><span class="o">-</span><span class="n">mean</span><span class="p">(</span><span class="n">controls</span><span class="p">))</span><span class="w"> </span><span class="o">/</span><span class="w"> 
+      </span><span class="nf">sqrt</span><span class="p">(</span><span class="w"> </span><span class="n">var</span><span class="p">(</span><span class="n">cases</span><span class="p">)</span><span class="o">/</span><span class="n">n</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">var</span><span class="p">(</span><span class="n">controls</span><span class="p">)</span><span class="o">/</span><span class="n">n</span><span class="w"> </span><span class="p">)</span><span class="w"> 
+  </span><span class="nf">return</span><span class="p">(</span><span class="n">tstat</span><span class="p">)</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span><span class="n">ttests</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">replicate</span><span class="p">(</span><span class="m">1000</span><span class="p">,</span><span class="w"> </span><span class="n">ttestgenerator</span><span class="p">(</span><span class="m">10</span><span class="p">))</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>With 1,000 Monte Carlo simulated occurrences of this random variable, we can now get a glimpse of its distribution:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">hist</span><span class="p">(</span><span class="n">ttests</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/monte_carlo-ttest_hist-1.png" alt="Histogram of 1000 Monte Carlo simulated t-statistics." /></p>
+
+<p>So is the distribution of this t-statistic well approximated by the
+normal distribution? In the next chapter, we will formally introduce
+quantile-quantile plots, which provide a useful visual inspection of
+how well one distribution approximates another. As we will explain
+later, if points fall on the identity line, it means the approximation
+is a good one.</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">qqnorm</span><span class="p">(</span><span class="n">ttests</span><span class="p">)</span><span class="w">
+</span><span class="n">abline</span><span class="p">(</span><span class="m">0</span><span class="p">,</span><span class="m">1</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/monte_carlo-ttest_qqplot-1.png" alt="Quantile-quantile plot comparing 1000 Monte Carlo simulated t-statistics to theoretical normal distribution." /></p>
+
+<p>This looks like a very good approximation. For this particular population, a sample size of 10 was large enough to use the CLT approximation. How about 3?</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">ttests</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">replicate</span><span class="p">(</span><span class="m">1000</span><span class="p">,</span><span class="w"> </span><span class="n">ttestgenerator</span><span class="p">(</span><span class="m">3</span><span class="p">))</span><span class="w">
+</span><span class="n">qqnorm</span><span class="p">(</span><span class="n">ttests</span><span class="p">)</span><span class="w">
+</span><span class="n">abline</span><span class="p">(</span><span class="m">0</span><span class="p">,</span><span class="m">1</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/monte_carlo-ttest_df3_qqplot-1.png" alt="Quantile-quantile plot comparing 1000 Monte Carlo simulated t-statistics with three degrees of freedom to theoretical normal distribution." /></p>
+
+<p>Now we see that the large quantiles, referred to by statisticians as
+the <em>tails</em>, are larger than expected (below the line on the left side
+of the plot and above the line on the right side of the plot).  In the
+previous module, we explained that when the sample size is not large
+enough and the <em>population values</em> follow a normal distribution, then
+the t-distribution is a better approximation. Our simulation results
+seem to confirm this:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">ps</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="p">(</span><span class="n">seq</span><span class="p">(</span><span class="m">0</span><span class="p">,</span><span class="m">999</span><span class="p">)</span><span class="m">+0.5</span><span class="p">)</span><span class="o">/</span><span class="m">1000</span><span class="w">
+</span><span class="n">qqplot</span><span class="p">(</span><span class="n">qt</span><span class="p">(</span><span class="n">ps</span><span class="p">,</span><span class="n">df</span><span class="o">=</span><span class="m">2</span><span class="o">*</span><span class="m">3-2</span><span class="p">),</span><span class="n">ttests</span><span class="p">,</span><span class="n">xlim</span><span class="o">=</span><span class="nf">c</span><span class="p">(</span><span class="m">-6</span><span class="p">,</span><span class="m">6</span><span class="p">),</span><span class="n">ylim</span><span class="o">=</span><span class="nf">c</span><span class="p">(</span><span class="m">-6</span><span class="p">,</span><span class="m">6</span><span class="p">))</span><span class="w">
+</span><span class="n">abline</span><span class="p">(</span><span class="m">0</span><span class="p">,</span><span class="m">1</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/monte_carlo-ttest_v_tdist_qqplot-1.png" alt="Quantile-quantile plot comparing 1000 Monte Carlo simulated t-statistics with three degrees of freedom to theoretical t-distribution." /></p>
+
+<p>The t-distribution is a much better approximation in this case, but it is still not perfect. This is due to the fact that the original data is not that well approximated by the normal distribution.</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">qqnorm</span><span class="p">(</span><span class="n">controlPopulation</span><span class="p">)</span><span class="w">
+</span><span class="n">qqline</span><span class="p">(</span><span class="n">controlPopulation</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/monte_carlo-dat_qqplot-1.png" alt="Quantile-quantile of original data compared to theoretical quantile distribution." /></p>
+
+<h2 id="parametric-simulations-for-the-observations">Parametric Simulations for the Observations</h2>
+
+<p>The technique we used to motivate random variables and the null
+distribution was a type of Monte Carlo simulation. We had access to
+population data and generated samples at random. In practice, we do
+not have access to the entire population. The reason for using the
+approach here was for educational purposes. However, when we want to
+use Monte Carlo simulations in practice, it is much more typical to
+assume a parametric distribution and generate a population from
+this, which is called a <em>parametric simulation</em>. This means that we take
+parameters estimated from the real data (here the mean and the standard
+deviation), and plug these into a model (here the normal
+distribution).  This is actually the most common form of Monte Carlo
+simulation.</p>
+
+<p>For the case of weights, we could use our knowledge that mice typically weigh 24 ounces with a SD of about 3.5 ounces, and that the distribution is approximately normal, to generate population data:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">controls</span><span class="o">&lt;-</span><span class="w"> </span><span class="n">rnorm</span><span class="p">(</span><span class="m">5000</span><span class="p">,</span><span class="w"> </span><span class="n">mean</span><span class="o">=</span><span class="m">24</span><span class="p">,</span><span class="w"> </span><span class="n">sd</span><span class="o">=</span><span class="m">3.5</span><span class="p">)</span><span class="w"> 
+</span></code></pre>
+</div>
+
+<p>After we generate the data, we can then repeat the exercise above. We no longer have to use the <code class="highlighter-rouge">sample</code> function since we can re-generate random normal numbers. The <code class="highlighter-rouge">ttestgenerator</code> function therefore can be written as follows:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">ttestgenerator</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="n">mean</span><span class="o">=</span><span class="m">24</span><span class="p">,</span><span class="w"> </span><span class="n">sd</span><span class="o">=</span><span class="m">3.5</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+  </span><span class="n">cases</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">rnorm</span><span class="p">(</span><span class="n">n</span><span class="p">,</span><span class="n">mean</span><span class="p">,</span><span class="n">sd</span><span class="p">)</span><span class="w">
+  </span><span class="n">controls</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">rnorm</span><span class="p">(</span><span class="n">n</span><span class="p">,</span><span class="n">mean</span><span class="p">,</span><span class="n">sd</span><span class="p">)</span><span class="w">
+  </span><span class="n">tstat</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="p">(</span><span class="n">mean</span><span class="p">(</span><span class="n">cases</span><span class="p">)</span><span class="o">-</span><span class="n">mean</span><span class="p">(</span><span class="n">controls</span><span class="p">))</span><span class="w"> </span><span class="o">/</span><span class="w"> 
+      </span><span class="nf">sqrt</span><span class="p">(</span><span class="w"> </span><span class="n">var</span><span class="p">(</span><span class="n">cases</span><span class="p">)</span><span class="o">/</span><span class="n">n</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">var</span><span class="p">(</span><span class="n">controls</span><span class="p">)</span><span class="o">/</span><span class="n">n</span><span class="w"> </span><span class="p">)</span><span class="w"> 
+  </span><span class="nf">return</span><span class="p">(</span><span class="n">tstat</span><span class="p">)</span><span class="w">
+  </span><span class="p">}</span><span class="w">
+</span></code></pre>
+</div>
+
+  </div>
+</div>
+
+
+      </div>
+      <hr>
+      <footer>
+        <p><small>
+  <!-- start of Karl's footer; modify this part -->
+
+<a href="http://genomicsclass.github.io/book/">PH525x</a>, 
+Rafael Irizarry and Michael Love, 
+<a href="https://github.com/genomicsclass/labs/blob/master/LICENSE">MIT License</a>
+
+  <!-- end of Karl's footer; modify this part -->
+        </small></p>
+      </footer>
+
+    </div>
+
+    
+  </body>
+</html>
+

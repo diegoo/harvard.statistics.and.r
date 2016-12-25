@@ -1,0 +1,417 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Power calculations</title>
+    
+    <meta name="author" content="Rafael Irizarry and Michael Love">
+
+    <!-- Enable responsive viewport -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Le HTML5 shim, for IE6-8 support of HTML elements -->
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <!-- Le styles -->
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/bootstrap/css/bootstrap.2.2.2.min.css" rel="stylesheet">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/style.css?body=1" rel="stylesheet" type="text/css" media="all">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/kbroman.css" rel="stylesheet" type="text/css" media="all">
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/css/knitr.css" rel="stylesheet" type="text/css" media="all">
+
+    <!-- Le fav and touch icons -->
+    <link href="http://genomicsclass.github.io/book/assets/themes/twitter/ico/favicon.ico" rel="icon" type="image/png">
+
+    <!-- atom & rss feed -->
+    <link href="http://genomicsclass.github.io/booknil" type="application/atom+xml" rel="alternate" title="Sitewide ATOM Feed">
+    <link href="http://genomicsclass.github.io/booknil" type="application/rss+xml" rel="alternate" title="Sitewide RSS Feed">
+
+    <!-- knitr javascript -->
+    <script src="http://genomicsclass.github.io/book/assets/themes/twitter/knitr.js" type="text/javascript"></script>
+
+    <!-- mathjax javascript -->
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+      tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}
+      });
+    </script>
+
+    <script src='https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML'></script>
+
+
+  </head>
+
+  <body>
+    <div class="navbar">
+      <div class="navbar-inner">
+        <div class="container-narrow">
+          <a class="brand" href="http://genomicsclass.github.io/book">PH525x series - Biomedical Data Science</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="container-narrow">
+
+      <div class="content">
+        
+
+<div class="page-header">
+  <h2>Power calculations </h2>
+</div>
+
+<div class="row-fluid">
+  <div class="span12">
+    <h2 id="power-calculations">Power Calculations</h2>
+
+<h4 id="introduction">Introduction</h4>
+
+<p>We have used the example of the effects of two different diets on the weight of mice. Since in this illustrative example we have access to the population, we know that in fact there is a substantial (about 10%) difference between the average weights of the two populations:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span><span class="w">
+</span><span class="n">dat</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">read.csv</span><span class="p">(</span><span class="s2">"mice_pheno.csv"</span><span class="p">)</span><span class="w"> </span><span class="c1">#Previously downloaded 
+</span><span class="w">
+</span><span class="n">controlPopulation</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span><span class="n">Sex</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"F"</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">Diet</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"chow"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">  
+  </span><span class="n">select</span><span class="p">(</span><span class="n">Bodyweight</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">unlist</span><span class="w">
+
+</span><span class="n">hfPopulation</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">filter</span><span class="p">(</span><span class="n">dat</span><span class="p">,</span><span class="n">Sex</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"F"</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">Diet</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"hf"</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w">  
+  </span><span class="n">select</span><span class="p">(</span><span class="n">Bodyweight</span><span class="p">)</span><span class="w"> </span><span class="o">%&gt;%</span><span class="w"> </span><span class="n">unlist</span><span class="w">
+
+</span><span class="n">mu_hf</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">hfPopulation</span><span class="p">)</span><span class="w">
+</span><span class="n">mu_control</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">controlPopulation</span><span class="p">)</span><span class="w">
+</span><span class="n">print</span><span class="p">(</span><span class="n">mu_hf</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">mu_control</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 2.375517
+</code></pre>
+</div>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">print</span><span class="p">((</span><span class="n">mu_hf</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">mu_control</span><span class="p">)</span><span class="o">/</span><span class="n">mu_control</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="m">100</span><span class="p">)</span><span class="w"> </span><span class="c1"># percent increase
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 9.942157
+</code></pre>
+</div>
+
+<p>We have also seen that, in some cases, when we take a sample and perform a t-test, we don’t always get a p-value smaller than 0.05. For example, here is a case were we take sample of 5 mice and don’t achieve statistical significance at the 0.05 level:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">set.seed</span><span class="p">(</span><span class="m">1</span><span class="p">)</span><span class="w">
+</span><span class="n">N</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">5</span><span class="w">
+</span><span class="n">hf</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">hfPopulation</span><span class="p">,</span><span class="n">N</span><span class="p">)</span><span class="w">
+</span><span class="n">control</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">controlPopulation</span><span class="p">,</span><span class="n">N</span><span class="p">)</span><span class="w">
+</span><span class="n">t.test</span><span class="p">(</span><span class="n">hf</span><span class="p">,</span><span class="n">control</span><span class="p">)</span><span class="o">$</span><span class="n">p.value</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 0.1410204
+</code></pre>
+</div>
+
+<p>Did we make a mistake? By not rejecting the null hypothesis, are we
+saying the diet has no effect? The answer to this question is no. All
+we can say is that we did not reject the null hypothesis. But this
+does not necessarily imply that the null is true. The problem is that,
+in this particular instance, we don’t have enough <em>power</em>, a term we
+are now going to define. If you are doing scientific research, it is
+very likely that you will have to do a power calculation at some
+point. In many cases, it is an ethical obligation as it can help you
+avoid sacrificing mice unnecessarily or limiting the number of human
+subjects exposed to potential risk in a study. Here we explain what
+statistical power means.</p>
+
+<h4 id="types-of-error">Types Of Error</h4>
+
+<p>Whenever we perform a statistical test, we are aware that we may make a
+mistake. This is why our p-values are not 0. Under the null, there is
+always a positive, perhaps very small, but still positive chance that we
+will reject the null when it is true. If the p-value is 0.05, it will
+happen 1 out of 20 times. This <em>error</em> is called <em>type I error</em> by
+statisticians.</p>
+
+<p>A type I error is defined as rejecting the null when we should
+not. This is also referred to as a false positive. So why do we then
+use 0.05? Shouldn’t we use 0.000001 to be really sure? The reason we
+don’t use infinitesimal cut-offs to avoid type I errors at all cost is
+that there is another error we can commit: to not reject the null when we
+should. This is called a <em>type II error</em> or a false negative. The R
+code analysis above shows an example of a false negative: we did not
+reject the null hypothesis (at the 0.05 level) and, because we happen
+to know and peeked at the true population means, we know there is in fact a
+difference. Had we used a p-value cutoff of 0.25, we would not have
+made this mistake. However, in general, are we comfortable with a type
+I error rate of 1 in 4? Usually we are not.</p>
+
+<h4 id="the-005-and-001-cut-offs-are-arbitrary">The 0.05 and 0.01 Cut-offs Are Arbitrary</h4>
+
+<p>Most journals and regulatory agencies frequently insist that results be significant at the 0.01 or 0.05 levels. Of course there is nothing special about these numbers other than the fact that some of the first papers on p-values used these values as examples. Part of the goal of this book is to give readers a good understanding of what p-values and confidence intervals are so that these choices can be judged in an informed way. Unfortunately, in science, these cut-offs are applied somewhat mindlessly, but that topic is part of a complicated debate.</p>
+
+<h4 id="power-calculation">Power Calculation</h4>
+
+<p>Power is the probability of rejecting the null when the null is
+false. Of course “when the null is false” is a complicated statement
+because it can be false in many ways.
+<script type="math/tex">\Delta \equiv \mu_Y - \mu_X</script>
+could be anything and the power actually depends on this parameter. It
+also depends on the standard error of your estimates which in turn
+depends on the sample size and the population standard deviations. In
+practice, we don’t know these so we usually report power for several
+plausible values of <script type="math/tex">\Delta</script>, <script type="math/tex">\sigma_X</script>, <script type="math/tex">\sigma_Y</script> and various
+sample sizes.
+Statistical theory gives us formulas to calculate
+power. The <code class="highlighter-rouge">pwr</code> package performs these calculations for you. Here we
+will illustrate the concepts behind power by coding up simulations in R.</p>
+
+<p>Suppose our sample size is:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">N</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">12</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>and we will reject the null hypothesis at:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">alpha</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">0.05</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>What is our power with this particular data? We will compute this probability by re-running the exercise many times and calculating the proportion of times the null hypothesis is rejected. Specifically, we will run:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">B</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">2000</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>simulations. The simulation is as follows: we take a sample of size <script type="math/tex">N</script> from both control and treatment groups, we perform a t-test comparing these two, and report if the p-value is less than <code class="highlighter-rouge">alpha</code> or not. We write a function that does this:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">reject</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">N</span><span class="p">,</span><span class="w"> </span><span class="n">alpha</span><span class="o">=</span><span class="m">0.05</span><span class="p">){</span><span class="w">
+   </span><span class="n">hf</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">hfPopulation</span><span class="p">,</span><span class="n">N</span><span class="p">)</span><span class="w"> 
+   </span><span class="n">control</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">controlPopulation</span><span class="p">,</span><span class="n">N</span><span class="p">)</span><span class="w">
+   </span><span class="n">pval</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">t.test</span><span class="p">(</span><span class="n">hf</span><span class="p">,</span><span class="n">control</span><span class="p">)</span><span class="o">$</span><span class="n">p.value</span><span class="w">
+   </span><span class="n">pval</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">alpha</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>Here is an example of one simulation for a sample size of 12. The call to <code class="highlighter-rouge">reject</code> answers the question “Did we reject?”</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">reject</span><span class="p">(</span><span class="m">12</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] FALSE
+</code></pre>
+</div>
+
+<p>Now we can use the <code class="highlighter-rouge">replicate</code> function to do this <code class="highlighter-rouge">B</code> times.</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">rejections</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">replicate</span><span class="p">(</span><span class="n">B</span><span class="p">,</span><span class="n">reject</span><span class="p">(</span><span class="n">N</span><span class="p">))</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>Our power is just the proportion of times we correctly reject. So with  <script type="math/tex">N=12</script> our power is only:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">mean</span><span class="p">(</span><span class="n">rejections</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 0.2145
+</code></pre>
+</div>
+
+<p>This explains why the t-test was not rejecting when we knew the null
+was false. With a sample size of just 12, our power is about 23%. To
+guard against false positives at the 0.05 level, we had set the
+threshold at a high enough level that resulted in many type II
+errors.</p>
+
+<p>Let’s see how power improves with N. We will use the function <code class="highlighter-rouge">sapply</code>, which applies a function to each of the elements of a vector. We want to repeat the above for the following sample size:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">Ns</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">seq</span><span class="p">(</span><span class="m">5</span><span class="p">,</span><span class="w"> </span><span class="m">50</span><span class="p">,</span><span class="w"> </span><span class="m">5</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>So we use <code class="highlighter-rouge">apply</code> like this:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">power</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sapply</span><span class="p">(</span><span class="n">Ns</span><span class="p">,</span><span class="k">function</span><span class="p">(</span><span class="n">N</span><span class="p">){</span><span class="w">
+  </span><span class="n">rejections</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">replicate</span><span class="p">(</span><span class="n">B</span><span class="p">,</span><span class="w"> </span><span class="n">reject</span><span class="p">(</span><span class="n">N</span><span class="p">))</span><span class="w">
+  </span><span class="n">mean</span><span class="p">(</span><span class="n">rejections</span><span class="p">)</span><span class="w">
+  </span><span class="p">})</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>For each of the three simulations, the above code returns the proportion of times we reject. Not surprisingly power increases with N:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">plot</span><span class="p">(</span><span class="n">Ns</span><span class="p">,</span><span class="w"> </span><span class="n">power</span><span class="p">,</span><span class="w"> </span><span class="n">type</span><span class="o">=</span><span class="s2">"b"</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/power_calculations-power_versus_sample_size-1.png" alt="Power plotted against sample size." /></p>
+
+<p>Similarly, if we change the level <code class="highlighter-rouge">alpha</code> at which we reject, power
+changes. The smaller I want the chance of type I error to be, the less
+power I will have. Another way of saying this is that we trade off
+between the two types of error. We can see this by writing similar code, but
+keeping <script type="math/tex">N</script> fixed and considering several values of <code class="highlighter-rouge">alpha</code>:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">N</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">30</span><span class="w">
+</span><span class="n">alphas</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">c</span><span class="p">(</span><span class="m">0.1</span><span class="p">,</span><span class="m">0.05</span><span class="p">,</span><span class="m">0.01</span><span class="p">,</span><span class="m">0.001</span><span class="p">,</span><span class="m">0.0001</span><span class="p">)</span><span class="w">
+</span><span class="n">power</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sapply</span><span class="p">(</span><span class="n">alphas</span><span class="p">,</span><span class="k">function</span><span class="p">(</span><span class="n">alpha</span><span class="p">){</span><span class="w">
+  </span><span class="n">rejections</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">replicate</span><span class="p">(</span><span class="n">B</span><span class="p">,</span><span class="n">reject</span><span class="p">(</span><span class="n">N</span><span class="p">,</span><span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">))</span><span class="w">
+  </span><span class="n">mean</span><span class="p">(</span><span class="n">rejections</span><span class="p">)</span><span class="w">
+</span><span class="p">})</span><span class="w">
+</span><span class="n">plot</span><span class="p">(</span><span class="n">alphas</span><span class="p">,</span><span class="w"> </span><span class="n">power</span><span class="p">,</span><span class="w"> </span><span class="n">xlab</span><span class="o">=</span><span class="s2">"alpha"</span><span class="p">,</span><span class="w"> </span><span class="n">type</span><span class="o">=</span><span class="s2">"b"</span><span class="p">,</span><span class="w"> </span><span class="n">log</span><span class="o">=</span><span class="s2">"x"</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/power_calculations-power_versus_alpha-1.png" alt="Power plotted against cut-off." /></p>
+
+<p>Note that the x-axis in this last plot is in the log scale.</p>
+
+<p>There is no “right” power or “right” alpha level, but it is important that you understand what each means.</p>
+
+<p>To see this clearly, you could create a plot with curves of power versus N. Show several curves in the same plot with color representing alpha level.</p>
+
+<h4 id="p-values-are-arbitrary-under-the-alternative-hypothesis">p-values are Arbitrary under the Alternative Hypothesis</h4>
+
+<p>Another consequence of what we have learned about power is that
+p-values are somewhat arbitrary when the 
+null hypothesis is not true and therefore
+the <em>alternative</em> hypothesis is true (the
+difference between the population means is not zero).
+When the alternative hypothesis is true, 
+we can make a p-value as small as we want simply by increasing
+the sample size (supposing that we have an infinite population to sample
+from). We can show this property of p-values
+by drawing larger and larger samples from our
+population and calculating p-values. This works because, in our case,
+we know that the alternative hypothesis is true, since we have
+access to the populations and can calculate the difference in their means.</p>
+
+<p>First write a function that returns a p-value for a given sample size <script type="math/tex">N</script>:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">calculatePvalue</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="k">function</span><span class="p">(</span><span class="n">N</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">
+   </span><span class="n">hf</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">hfPopulation</span><span class="p">,</span><span class="n">N</span><span class="p">)</span><span class="w"> 
+   </span><span class="n">control</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">controlPopulation</span><span class="p">,</span><span class="n">N</span><span class="p">)</span><span class="w">
+   </span><span class="n">t.test</span><span class="p">(</span><span class="n">hf</span><span class="p">,</span><span class="n">control</span><span class="p">)</span><span class="o">$</span><span class="n">p.value</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>We have a limit here of 200 for the high-fat diet population, but we can
+see the effect well before we get to 200.
+For each sample size, we will calculate a few p-values. We can do
+this by repeating each value of <script type="math/tex">N</script> a few times.</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">Ns</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">seq</span><span class="p">(</span><span class="m">10</span><span class="p">,</span><span class="m">200</span><span class="p">,</span><span class="n">by</span><span class="o">=</span><span class="m">10</span><span class="p">)</span><span class="w">
+</span><span class="n">Ns_rep</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">rep</span><span class="p">(</span><span class="n">Ns</span><span class="p">,</span><span class="w"> </span><span class="n">each</span><span class="o">=</span><span class="m">10</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>Again we use <code class="highlighter-rouge">sapply</code> to run our simulations:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">pvalues</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sapply</span><span class="p">(</span><span class="n">Ns_rep</span><span class="p">,</span><span class="w"> </span><span class="n">calculatePvalue</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p>Now we can plot the 10 p-values we generated for each sample size:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">plot</span><span class="p">(</span><span class="n">Ns_rep</span><span class="p">,</span><span class="w"> </span><span class="n">pvalues</span><span class="p">,</span><span class="w"> </span><span class="n">log</span><span class="o">=</span><span class="s2">"y"</span><span class="p">,</span><span class="w"> </span><span class="n">xlab</span><span class="o">=</span><span class="s2">"sample size"</span><span class="p">,</span><span class="w">
+     </span><span class="n">ylab</span><span class="o">=</span><span class="s2">"p-values"</span><span class="p">)</span><span class="w">
+</span><span class="n">abline</span><span class="p">(</span><span class="n">h</span><span class="o">=</span><span class="nf">c</span><span class="p">(</span><span class="m">.01</span><span class="p">,</span><span class="w"> </span><span class="m">.05</span><span class="p">),</span><span class="w"> </span><span class="n">col</span><span class="o">=</span><span class="s2">"red"</span><span class="p">,</span><span class="w"> </span><span class="n">lwd</span><span class="o">=</span><span class="m">2</span><span class="p">)</span><span class="w">
+</span></code></pre>
+</div>
+
+<p><img src="figure/power_calculations-pvals_decrease-1.png" alt="p-values from random samples at varying sample size. The actual value of the p-values decreases as we increase sample size whenever the alternative hypothesis is true." /></p>
+
+<p>Note that the y-axis is log scale and that the p-values show a
+decreasing trend all the way to <script type="math/tex">10^{-8}</script>
+as the sample size gets larger. The standard cutoffs
+of 0.01 and 0.05 are indicated with horizontal red lines.</p>
+
+<p>It is important to remember that p-values are not more interesting as
+they become very very small. Once we have convinced ourselves to
+reject the null hypothesis at a threshold we find reasonable, having
+an even smaller p-value just means that we sampled more mice than was
+necessary.  Having a larger sample size does help to increase the
+precision of our estimate of the difference <script type="math/tex">\Delta</script>, but the fact
+that the p-value becomes very very small is just a natural consequence
+of the mathematics of the test.  The p-values get smaller and smaller
+with increasing sample size because the numerator of the t-statistic
+has <script type="math/tex">\sqrt{N}</script> (for equal sized groups, and a similar effect occurs
+when <script type="math/tex">M \neq N</script>). Therefore, if <script type="math/tex">\Delta</script> is non-zero, the t-statistic
+will increase with <script type="math/tex">N</script>.</p>
+
+<p>Therefore, a better statistic to report is the effect size with
+a confidence interval or some statistic which gives the reader a
+sense of the change in a meaningful scale. We can
+report the effect size as a percent by dividing the difference
+and the confidence interval by the control population mean:</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">N</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="m">12</span><span class="w">
+</span><span class="n">hf</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">hfPopulation</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="p">)</span><span class="w">
+</span><span class="n">control</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">sample</span><span class="p">(</span><span class="n">controlPopulation</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="p">)</span><span class="w">
+</span><span class="n">diff</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">hf</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">control</span><span class="p">)</span><span class="w">
+</span><span class="n">diff</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">control</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="m">100</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 1.868663
+</code></pre>
+</div>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">t.test</span><span class="p">(</span><span class="n">hf</span><span class="p">,</span><span class="w"> </span><span class="n">control</span><span class="p">)</span><span class="o">$</span><span class="n">conf.int</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">mean</span><span class="p">(</span><span class="n">control</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="m">100</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] -20.94576  24.68309
+## attr(,"conf.level")
+## [1] 0.95
+</code></pre>
+</div>
+
+<p>In addition, we can report a statistic called
+<a href="https://en.wikipedia.org/wiki/Effect_size#Cohen.27s_d">Cohen’s d</a>,
+which is the difference between the groups divided by the pooled standard
+deviation of the two groups.</p>
+
+<div class="language-r highlighter-rouge"><pre class="highlight"><code><span class="n">sd_pool</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">sqrt</span><span class="p">(((</span><span class="n">N</span><span class="m">-1</span><span class="p">)</span><span class="o">*</span><span class="n">var</span><span class="p">(</span><span class="n">hf</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">N</span><span class="m">-1</span><span class="p">)</span><span class="o">*</span><span class="n">var</span><span class="p">(</span><span class="n">control</span><span class="p">))</span><span class="o">/</span><span class="p">(</span><span class="m">2</span><span class="o">*</span><span class="n">N</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="m">2</span><span class="p">))</span><span class="w">
+</span><span class="n">diff</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">sd_pool</span><span class="w">
+</span></code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>## [1] 0.07140083
+</code></pre>
+</div>
+
+<p>This tells us how many standard deviations of the data the mean of the
+high-fat diet group is from the control group. Under the
+alternative hypothesis, unlike the t-statistic which is guaranteed to
+increase, the effect size and Cohen’s d will become more precise.</p>
+
+
+  </div>
+</div>
+
+
+      </div>
+      <hr>
+      <footer>
+        <p><small>
+  <!-- start of Karl's footer; modify this part -->
+
+<a href="http://genomicsclass.github.io/book/">PH525x</a>, 
+Rafael Irizarry and Michael Love, 
+<a href="https://github.com/genomicsclass/labs/blob/master/LICENSE">MIT License</a>
+
+  <!-- end of Karl's footer; modify this part -->
+        </small></p>
+      </footer>
+
+    </div>
+
+    
+  </body>
+</html>
+

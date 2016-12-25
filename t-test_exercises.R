@@ -54,3 +54,26 @@ tval <- (X.ns - X.s) / sd.diff
 tval
 ## [1] 2.120904
 
+## Recall that we summarize our data using a t-statistics because we know that in situations where the null hypothesis is true (what we mean when we say "under the null") and the sample size is relatively large, this t-value will have an approximate standard normal distribution. Because we know the distribution of the t-value under the null, we can quantitatively determine how unusual the observed t-value would be if the null hypothesis were true.
+
+## The standard procedure is to examine the probability a t-statistic that actually does follow the null hypothesis would have larger absolute value than the absolute value of the t-value we just observed -- this is called a two-sided test.
+
+## We have computed these by taking one minus the area under the standard normal curve between -abs(tval) and abs(tval). In R, we can do this by using the pnorm function, which computes the area under a normal curve from negative infinity up to the value given as its first argument:
+
+## What is the probability that the null hypothesis is true- the probability that data lies outside the normal distribution where t-test value is 2.1209
+
+pval <- 1-(pnorm(abs(tval)) - pnorm(-abs(tval)))
+pval
+# 0.03392985
+
+## Because of the symmetry of the standard normal distribution, there is a simpler way to calculate the probability that a t-value under the null could have a larger absolute value than tval:
+2*pnorm(-abs(tval))
+
+## It might help you (it has helped me) to draw the normal distribution on a piece of paper. Remember that the total area under the curve adds up to 1 and the left and right side are symmetric. It shows that calculating the area from the left untill -abs(tval) times 2 (because you have a left and right tail): 2*pnorm(-abs(tval))
+## gives the same number as substracting (the left area untill abs(tval) minus the left area untill (-abs(tval))) from the total area under the curve (which is 1): 1- (pnorm(tval)-pnorm(-1*tval))
+
+## By reporting only p-values, many scientific publications provide an incomplete story of their findings. As we have mentioned, with very large sample sizes, scientifically insignificant differences between two groups can lead to small p-values. Confidence intervals are more informative as they include the estimate itself. Our estimate of the difference between babies of smoker and non-smokers: mean(dat.s) - mean( dat.ns). If we use the CLT, what quantity would we add and subtract to this estimate to obtain a 99% confidence interval?
+
+set.seed(1)
+N <- 25
+qnorm(0.995)*sqrt( sd( dat.ns)^2/N + sd( dat.s)^2/N)
